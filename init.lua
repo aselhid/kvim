@@ -344,20 +344,8 @@ do
   -- since otherwise the icons won't display properly.
   if vim.g.have_nerd_font then vim.pack.add { gh 'nvim-tree/nvim-web-devicons' } end
 
-  -- Here is a more advanced configuration example that passes options to `gitsigns.nvim`
-  --
-  -- See `:help gitsigns` to understand what each configuration key does.
-  -- Adds git related signs to the gutter, as well as utilities for managing changes
-  vim.pack.add { gh 'lewis6991/gitsigns.nvim' }
-  require('gitsigns').setup {
-    signs = {
-      add = { text = '+' }, ---@diagnostic disable-line: missing-fields
-      change = { text = '~' }, ---@diagnostic disable-line: missing-fields
-      delete = { text = '_' }, ---@diagnostic disable-line: missing-fields
-      topdelete = { text = '‾' }, ---@diagnostic disable-line: missing-fields
-      changedelete = { text = '~' }, ---@diagnostic disable-line: missing-fields
-    },
-  }
+  -- Git signs in the gutter via mini.diff (part of mini.nvim, loaded below)
+  -- mini.diff setup is done after mini.nvim is loaded
 
   -- Useful plugin to show you pending keybinds.
   vim.pack.add { gh 'folke/which-key.nvim' }
@@ -369,7 +357,9 @@ do
     spec = {
       { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
       { '<leader>t', group = '[T]oggle' },
-      { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
+      { '<leader>g', group = '[G]it', mode = { 'n', 'v' } },
+      { '<leader>a', group = '[A]I' },
+      { '<leader>n', group = '[N]oice' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
   }
@@ -435,6 +425,55 @@ do
   -- cursor location to LINE:COLUMN
   ---@diagnostic disable-next-line: duplicate-set-field
   statusline.section_location = function() return '%2l:%-2v' end
+
+  -- Git diff signs in the gutter + hunk navigation/actions
+  local diff = require 'mini.diff'
+  diff.setup {
+    view = {
+      style = 'sign',
+      signs = { add = '+', change = '~', delete = '_' },
+    },
+  }
+
+  -- Navigation
+  vim.keymap.set('n', ']c', function()
+    if vim.wo.diff then
+      vim.cmd.normal { ']c', bang = true }
+    else
+      diff.goto_hunk 'next'
+    end
+  end, { desc = 'Jump to next git [c]hange' })
+
+  vim.keymap.set('n', '[c', function()
+    if vim.wo.diff then
+      vim.cmd.normal { '[c', bang = true }
+    else
+      diff.goto_hunk 'prev'
+    end
+  end, { desc = 'Jump to previous git [c]hange' })
+
+  -- Actions
+  vim.keymap.set('n', '<leader>gs', function()
+    diff.do_hunks(0, 'apply', { line_start = vim.fn.line '.', line_end = vim.fn.line '.' })
+  end, { desc = 'git [s]tage hunk' })
+  vim.keymap.set('n', '<leader>gr', function()
+    diff.do_hunks(0, 'reset', { line_start = vim.fn.line '.', line_end = vim.fn.line '.' })
+  end, { desc = 'git [r]eset hunk' })
+  vim.keymap.set('v', '<leader>gs', function()
+    diff.do_hunks(0, 'apply', { line_start = vim.fn.line '.', line_end = vim.fn.line 'v' })
+  end, { desc = 'git [s]tage hunk' })
+  vim.keymap.set('v', '<leader>gr', function()
+    diff.do_hunks(0, 'reset', { line_start = vim.fn.line '.', line_end = vim.fn.line 'v' })
+  end, { desc = 'git [r]eset hunk' })
+  vim.keymap.set('n', '<leader>gS', function() diff.do_hunks(0, 'apply') end, { desc = 'git [S]tage buffer' })
+  vim.keymap.set('n', '<leader>gR', function() diff.do_hunks(0, 'reset') end, { desc = 'git [R]eset buffer' })
+
+  -- Toggle overlay (inline diff view)
+  vim.keymap.set('n', '<leader>gp', diff.toggle_overlay, { desc = 'git [p]review hunk (overlay)' })
+  vim.keymap.set('n', '<leader>gw', diff.toggle_overlay, { desc = 'git toggle intra-line [w]ord diff' })
+
+  -- Text object: 'ih' selects hunk
+  vim.keymap.set({ 'o', 'x' }, 'ih', diff.textobject, { desc = 'git hunk text object' })
 
   -- ... and there is more!
   --  Check out: https://github.com/nvim-mini/mini.nvim
