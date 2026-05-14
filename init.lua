@@ -521,30 +521,29 @@ do
     callback = function(event)
       local buf = event.buf
 
-      -- Find references for the word under your cursor.
-      vim.keymap.set('n', 'grr', builtin.lsp_references, { buffer = buf, desc = '[G]oto [R]eferences' })
+      local map = function(keys, func, desc) vim.keymap.set('n', keys, func, { buffer = buf, desc = desc }) end
 
-      -- Jump to the implementation of the word under your cursor.
-      -- Useful when your language has ways of declaring types without an actual implementation.
-      vim.keymap.set('n', 'gri', builtin.lsp_implementations, { buffer = buf, desc = '[G]oto [I]mplementation' })
+      -- Go to definition (where a variable/function is defined). Press <C-t> to jump back.
+      map('gd', builtin.lsp_definitions, '[G]oto [D]efinition')
+      map('grd', builtin.lsp_definitions, '[G]oto [D]efinition')
 
-      -- Jump to the definition of the word under your cursor.
-      -- This is where a variable was first declared, or where a function is defined, etc.
-      -- To jump back, press <C-t>.
-      vim.keymap.set('n', 'grd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
+      -- Find all references to the symbol under cursor.
+      map('gr', builtin.lsp_references, '[G]oto [R]eferences')
+      map('grr', builtin.lsp_references, '[G]oto [R]eferences')
+
+      -- Go to implementation (useful for interfaces/abstract types).
+      map('gi', builtin.lsp_implementations, '[G]oto [I]mplementation')
+      map('gri', builtin.lsp_implementations, '[G]oto [I]mplementation')
+
+      -- Go to type definition (the type of the symbol, not where it's defined).
+      map('gy', builtin.lsp_type_definitions, '[G]oto T[y]pe Definition')
+      map('grt', builtin.lsp_type_definitions, '[G]oto T[y]pe Definition')
 
       -- Fuzzy find all the symbols in your current document.
-      -- Symbols are things like variables, functions, types, etc.
-      vim.keymap.set('n', 'gO', builtin.lsp_document_symbols, { buffer = buf, desc = 'Open Document Symbols' })
+      map('gO', builtin.lsp_document_symbols, 'Open Document Symbols')
 
       -- Fuzzy find all the symbols in your current workspace.
-      -- Similar to document symbols, except searches over your entire project.
-      vim.keymap.set('n', 'gW', builtin.lsp_dynamic_workspace_symbols, { buffer = buf, desc = 'Open Workspace Symbols' })
-
-      -- Jump to the type of the word under your cursor.
-      -- Useful when you're not sure what type a variable is and you want to see
-      -- the definition of its *type*, not where it was *defined*.
-      vim.keymap.set('n', 'grt', builtin.lsp_type_definitions, { buffer = buf, desc = '[G]oto [T]ype Definition' })
+      map('gW', builtin.lsp_dynamic_workspace_symbols, 'Open Workspace Symbols')
     end,
   })
 
@@ -678,58 +677,38 @@ do
     end,
   })
 
-  -- Enable the following language servers
-  --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
-  --  See `:help lsp-config` for information about keys and how to configure
-  ---@type table<string, vim.lsp.Config>
-  local servers = {
-    -- clangd = {},
-    -- gopls = {},
-    -- pyright = {},
-    -- rust_analyzer = {},
-    --
-    -- Some languages (like typescript) have entire language plugins that can be useful:
-    --    https://github.com/pmizio/typescript-tools.nvim
-    --
-    -- But for many setups, the LSP (`ts_ls`) will work just fine
-    -- ts_ls = {},
+  -- Apply custom LSP config BEFORE mason-lspconfig.setup() so that
+  -- automatic_enable picks it up when calling vim.lsp.enable().
+  vim.lsp.config('lua_ls', {
+    on_init = function(client)
+      client.server_capabilities.documentFormattingProvider = false
 
-    stylua = {}, -- Used to format Lua code
+      if client.workspace_folders then
+        local path = client.workspace_folders[1].name
+        if path ~= vim.fn.stdpath 'config' and (vim.uv.fs_stat(path .. '/.luarc.json') or vim.uv.fs_stat(path .. '/.luarc.jsonc')) then return end
+      end
 
-    -- Special Lua Config, as recommended by neovim help docs
-    lua_ls = {
-      on_init = function(client)
-        client.server_capabilities.documentFormattingProvider = false -- Disable formatting (formatting is done by stylua)
-
-        if client.workspace_folders then
-          local path = client.workspace_folders[1].name
-          if path ~= vim.fn.stdpath 'config' and (vim.uv.fs_stat(path .. '/.luarc.json') or vim.uv.fs_stat(path .. '/.luarc.jsonc')) then return end
-        end
-
-        client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
-          runtime = {
-            version = 'LuaJIT',
-            path = { 'lua/?.lua', 'lua/?/init.lua' },
-          },
-          workspace = {
-            checkThirdParty = false,
-            -- NOTE: this is a lot slower and will cause issues when working on your own configuration.
-            --  See https://github.com/neovim/nvim-lspconfig/issues/3189
-            library = vim.tbl_extend('force', vim.api.nvim_get_runtime_file('', true), {
-              '${3rd}/luv/library',
-              '${3rd}/busted/library',
-            }),
-          },
-        })
-      end,
-      ---@type lspconfig.settings.lua_ls
-      settings = {
-        Lua = {
-          format = { enable = false }, -- Disable formatting (formatting is done by stylua)
+      client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
+        runtime = {
+          version = 'LuaJIT',
+          path = { 'lua/?.lua', 'lua/?/init.lua' },
         },
+        workspace = {
+          checkThirdParty = false,
+          library = vim.tbl_extend('force', vim.api.nvim_get_runtime_file('', true), {
+            '${3rd}/luv/library',
+            '${3rd}/busted/library',
+          }),
+        },
+      })
+    end,
+    ---@type lspconfig.settings.lua_ls
+    settings = {
+      Lua = {
+        format = { enable = false },
       },
     },
-  }
+  })
 
   vim.pack.add {
     gh 'neovim/nvim-lspconfig',
@@ -738,27 +717,29 @@ do
     gh 'WhoIsSethDaniel/mason-tool-installer.nvim',
   }
 
-  -- Automatically install LSPs and related tools to stdpath for Neovim
   require('mason').setup {}
 
-  -- Ensure the servers and tools above are installed
-  --
-  -- To check the current status of installed tools and/or manually install
-  -- other tools, you can run
-  --    :Mason
-  --
-  -- You can press `g?` for help in this menu.
-  local ensure_installed = vim.tbl_keys(servers or {})
-  vim.list_extend(ensure_installed, {
-    -- You can add other tools here that you want Mason to install
-  })
+  -- mason-lspconfig bridges Mason with Neovim's built-in LSP.
+  -- automatic_enable = true (the default) calls vim.lsp.enable() for every
+  -- installed server, wiring filetype autocmds so the right server starts
+  -- automatically when you open a matching file.
+  -- To add more servers: append to ensure_installed and restart Neovim.
+  -- To check status: :Mason   (press g? for help)
+  require('mason-lspconfig').setup {
+    ensure_installed = {
+      'lua_ls',  -- Lua
+      'tsgo',    -- TypeScript / JavaScript (Go-rewrite TS server)
+      'gopls',   -- Go
+      'pyright', -- Python
+    },
+  }
 
-  require('mason-tool-installer').setup { ensure_installed = ensure_installed }
-
-  for name, server in pairs(servers) do
-    vim.lsp.config(name, server)
-    vim.lsp.enable(name)
-  end
+  -- mason-tool-installer handles non-LSP tools (formatters, linters).
+  require('mason-tool-installer').setup {
+    ensure_installed = {
+      'stylua', -- Lua formatter
+    },
+  }
 end
 
 -- ============================================================
