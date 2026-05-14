@@ -35,7 +35,7 @@ local function equalize_content_wins()
       local ft = vim.api.nvim_get_option_value('filetype', { buf = vim.api.nvim_win_get_buf(win) })
       if ft == 'neo-tree' then
         has_neotree = true
-      else
+      elseif ft ~= 'sidekick_terminal' then
         table.insert(content_wins, win)
       end
     end
