@@ -106,11 +106,8 @@ do
   -- NOTE: You can change these options as you wish!
   --  For more options, you can see `:help option-list`
 
-  -- Make line numbers default
   vim.o.number = true
-  -- You can also add relative line numbers, to help with jumping.
-  --  Experiment for yourself to see if you like it!
-  -- vim.o.relativenumber = true
+  vim.o.relativenumber = true
 
   -- Enable mouse mode, can be useful for resizing splits for example!
   vim.o.mouse = 'a'
@@ -862,10 +859,30 @@ do
       -- By default, you may press `<c-space>` to show the documentation.
       -- Optionally, set `auto_show = true` to show the documentation after a delay.
       documentation = { auto_show = false, auto_show_delay_ms = 500 },
+      menu = {
+        cmdline_position = function()
+          if vim.g.ui_cmdline_pos ~= nil then
+            local pos = vim.g.ui_cmdline_pos
+            return { pos[1] - 1, pos[2] }
+          end
+          return vim.api.nvim_win_get_position(0)
+        end,
+      },
     },
 
     sources = {
       default = { 'lsp', 'path', 'snippets' },
+    },
+
+    cmdline = {
+      sources = { 'cmdline' },
+      completion = {
+        menu = {
+          auto_show = function()
+            return vim.fn.getcmdtype() == ':'
+          end,
+        },
+      },
     },
 
     snippets = { preset = 'luasnip' },
