@@ -1,0 +1,9 @@
+vim.pack.add { 'https://github.com/folke/snacks.nvim' }
+
+require('snacks').setup {
+  lazygit = { enabled = true },
+}
+
+vim.keymap.set('n', '<leader>gg', function() Snacks.lazygit() end, { desc = '[G]it: open lazygit' })
+vim.keymap.set('n', '<leader>gf', function() Snacks.lazygit.log_file() end, { desc = '[G]it: lazygit log (current file)' })
+vim.keymap.set('n', '<leader>gl', function() Snacks.lazygit.log() end, { desc = '[G]it: lazygit log' })
