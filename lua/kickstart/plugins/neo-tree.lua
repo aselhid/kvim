@@ -57,6 +57,9 @@ require('neo-tree').setup {
   window = {
     position = 'right',
     width = neotree_width,
+    mappings = {
+      ['<space>'] = false,
+    },
   },
   event_handlers = {
     { event = 'neo_tree_window_after_open', handler = equalize_content_wins },
