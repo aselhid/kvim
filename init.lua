@@ -291,11 +291,6 @@ do
       local kind = ev.data.kind
       if kind ~= 'install' and kind ~= 'update' then return end
 
-      if name == 'telescope-fzf-native.nvim' and vim.fn.executable 'make' == 1 then
-        run_build(name, { 'make' }, ev.data.path)
-        return
-      end
-
       if name == 'LuaSnip' then
         if vim.fn.has 'win32' ~= 1 and vim.fn.executable 'make' == 1 then run_build(name, { 'make', 'install_jsregexp' }, ev.data.path) end
         return
@@ -369,7 +364,7 @@ do
   -- Change the name of the colorscheme plugin below, and then
   -- change the command under that to load whatever the name of that colorscheme is.
   --
-  -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  -- If you want to see what colorschemes are already installed, run `:lua Snacks.picker.colorschemes()`.
   vim.pack.add { gh 'folke/tokyonight.nvim' }
   ---@diagnostic disable-next-line: missing-fields
   require('tokyonight').setup {
@@ -481,136 +476,78 @@ end
 
 -- ============================================================
 -- SECTION 4: SEARCH & NAVIGATION
--- Telescope setup, keymaps, LSP picker mappings
+-- snacks.picker keymaps, LSP picker mappings
 -- ============================================================
 do
   -- [[ Fuzzy Finder (files, lsp, etc) ]]
   --
-  -- Telescope is a fuzzy finder that comes with a lot of different things that
-  -- it can fuzzy find! It's more than just a "file finder", it can search
-  -- many different aspects of Neovim, your workspace, LSP, and more!
+  -- snacks.picker is a fuzzy finder bundled with snacks.nvim. The plugin itself
+  -- is installed and configured in lua/custom/plugins/snacks.lua.
   --
-  -- There are lots of other alternative pickers (like snacks.picker, or fzf-lua)
-  -- so feel free to experiment and see what you like!
-  --
-  -- The easiest way to use Telescope, is to start by doing something like:
-  --  :Telescope help_tags
-  --
-  -- After running this command, a window will open up and you're able to
-  -- type in the prompt window. You'll see a list of `help_tags` options and
-  -- a corresponding preview of the help.
-  --
-  -- Two important keymaps to use while in Telescope are:
-  --  - Insert mode: <c-/>
-  --  - Normal mode: ?
-  --
-  -- This opens a window that shows you all of the keymaps for the current
-  -- Telescope picker. This is really useful to discover what Telescope can
-  -- do as well as how to actually do it!
+  -- See `:help snacks-picker` and https://github.com/folke/snacks.nvim/blob/main/docs/picker.md
+  -- for the full list of available sources.
 
-  ---@type (string|vim.pack.Spec)[]
-  local telescope_plugins = {
-    gh 'nvim-lua/plenary.nvim',
-    gh 'nvim-telescope/telescope.nvim',
-    gh 'nvim-telescope/telescope-ui-select.nvim',
-  }
-  if vim.fn.executable 'make' == 1 then table.insert(telescope_plugins, gh 'nvim-telescope/telescope-fzf-native.nvim') end
+  local picker = function(name, opts)
+    return function() Snacks.picker[name](opts) end
+  end
 
-  -- NOTE: You can install multiple plugins at once
-  vim.pack.add(telescope_plugins)
+  vim.keymap.set('n', '<leader>sh', picker 'help', { desc = '[S]earch [H]elp' })
+  vim.keymap.set('n', '<leader>sk', picker 'keymaps', { desc = '[S]earch [K]eymaps' })
+  vim.keymap.set('n', '<leader>sf', picker 'files', { desc = '[S]earch [F]iles' })
+  vim.keymap.set('n', '<leader>ss', picker 'pickers', { desc = '[S]earch [S]elect Picker' })
+  vim.keymap.set({ 'n', 'v' }, '<leader>sw', picker 'grep_word', { desc = '[S]earch current [W]ord' })
+  vim.keymap.set('n', '<leader>sg', picker 'grep', { desc = '[S]earch by [G]rep' })
+  vim.keymap.set('n', '<leader>sd', picker 'diagnostics', { desc = '[S]earch [D]iagnostics' })
+  vim.keymap.set('n', '<leader>sr', picker 'resume', { desc = '[S]earch [R]esume' })
+  vim.keymap.set('n', '<leader>s.', picker 'recent', { desc = '[S]earch Recent Files ("." for repeat)' })
+  vim.keymap.set('n', '<leader>sc', picker 'commands', { desc = '[S]earch [C]ommands' })
+  vim.keymap.set('n', '<leader><leader>', picker 'buffers', { desc = '[ ] Find existing buffers' })
 
-  -- See `:help telescope` and `:help telescope.setup()`
-  require('telescope').setup {
-    -- You can put your default mappings / updates / etc. in here
-    --  All the info you're looking for is in `:help telescope.setup()`
-    --
-    -- defaults = {
-    --   mappings = {
-    --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-    --   },
-    -- },
-    -- pickers = {}
-    extensions = {
-      ['ui-select'] = { require('telescope.themes').get_dropdown() },
-    },
-  }
-
-  -- Enable Telescope extensions if they are installed
-  pcall(require('telescope').load_extension, 'fzf')
-  pcall(require('telescope').load_extension, 'ui-select')
-
-  -- See `:help telescope.builtin`
-  local builtin = require 'telescope.builtin'
-  vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
-  vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-  vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
-  vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
-  vim.keymap.set({ 'n', 'v' }, '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
-  vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
-  vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
-  vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-  vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-  vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = '[S]earch [C]ommands' })
-  vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
-
-  -- Add Telescope-based LSP pickers when an LSP attaches to a buffer.
-  -- If you later switch picker plugins, this is where to update these mappings.
+  -- LSP pickers attached per-buffer when an LSP client connects.
   vim.api.nvim_create_autocmd('LspAttach', {
-    group = vim.api.nvim_create_augroup('telescope-lsp-attach', { clear = true }),
+    group = vim.api.nvim_create_augroup('snacks-picker-lsp-attach', { clear = true }),
     callback = function(event)
       local buf = event.buf
 
       local map = function(keys, func, desc) vim.keymap.set('n', keys, func, { buffer = buf, desc = desc }) end
 
       -- Go to definition (where a variable/function is defined). Press <C-t> to jump back.
-      map('gd', builtin.lsp_definitions, '[G]oto [D]efinition')
-      map('grd', builtin.lsp_definitions, '[G]oto [D]efinition')
+      map('gd', picker 'lsp_definitions', '[G]oto [D]efinition')
+      map('grd', picker 'lsp_definitions', '[G]oto [D]efinition')
 
       -- Find all references to the symbol under cursor.
-      map('gr', builtin.lsp_references, '[G]oto [R]eferences')
-      map('grr', builtin.lsp_references, '[G]oto [R]eferences')
+      map('gr', picker 'lsp_references', '[G]oto [R]eferences')
+      map('grr', picker 'lsp_references', '[G]oto [R]eferences')
 
       -- Go to implementation (useful for interfaces/abstract types).
-      map('gi', builtin.lsp_implementations, '[G]oto [I]mplementation')
-      map('gri', builtin.lsp_implementations, '[G]oto [I]mplementation')
+      map('gi', picker 'lsp_implementations', '[G]oto [I]mplementation')
+      map('gri', picker 'lsp_implementations', '[G]oto [I]mplementation')
 
       -- Go to type definition (the type of the symbol, not where it's defined).
-      map('gy', builtin.lsp_type_definitions, '[G]oto T[y]pe Definition')
-      map('grt', builtin.lsp_type_definitions, '[G]oto T[y]pe Definition')
+      map('gy', picker 'lsp_type_definitions', '[G]oto T[y]pe Definition')
+      map('grt', picker 'lsp_type_definitions', '[G]oto T[y]pe Definition')
 
       -- Fuzzy find all the symbols in your current document.
-      map('gO', builtin.lsp_document_symbols, 'Open Document Symbols')
+      map('gO', picker 'lsp_symbols', 'Open Document Symbols')
 
       -- Fuzzy find all the symbols in your current workspace.
-      map('gW', builtin.lsp_dynamic_workspace_symbols, 'Open Workspace Symbols')
+      map('gW', picker 'lsp_workspace_symbols', 'Open Workspace Symbols')
     end,
   })
 
-  -- Override default behavior and theme when searching
-  vim.keymap.set('n', '<leader>/', function()
-    -- You can pass additional configuration to Telescope to change the theme, layout, etc.
-    builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
-      winblend = 10,
-      previewer = false,
-    })
-  end, { desc = '[/] Fuzzily search in current buffer' })
+  -- Fuzzy find within the current buffer.
+  vim.keymap.set('n', '<leader>/', picker 'lines', { desc = '[/] Fuzzily search in current buffer' })
 
-  -- It's also possible to pass additional configuration options.
-  --  See `:help telescope.builtin.live_grep()` for information about particular keys
-  vim.keymap.set(
-    'n',
-    '<leader>s/',
-    function()
-      builtin.live_grep {
-        grep_open_files = true,
-        prompt_title = 'Live Grep in Open Files',
-      }
-    end,
-    { desc = '[S]earch [/] in Open Files' }
-  )
+  -- Grep across open buffers only.
+  vim.keymap.set('n', '<leader>s/', picker 'grep_buffers', { desc = '[S]earch [/] in Open Files' })
 
   -- Shortcut for searching your Neovim configuration files
-  vim.keymap.set('n', '<leader>sn', function() builtin.find_files { cwd = vim.fn.stdpath 'config' } end, { desc = '[S]earch [N]eovim files' })
+  vim.keymap.set(
+    'n',
+    '<leader>sn',
+    function() Snacks.picker.files { cwd = vim.fn.stdpath 'config' } end,
+    { desc = '[S]earch [N]eovim files' }
+  )
 end
 
 -- ============================================================
