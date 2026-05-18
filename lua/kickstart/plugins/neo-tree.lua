@@ -66,6 +66,10 @@ require('neo-tree').setup {
     { event = 'neo_tree_window_after_close', handler = equalize_content_wins },
   },
   filesystem = {
+    follow_current_file = {
+      enabled = true,
+      leave_dirs_open = false,
+    },
     window = {
       mappings = {
         ['\\'] = 'close_window',
