@@ -354,6 +354,7 @@ do
       { '<leader>t', group = '[T]oggle' },
       { '<leader>g', group = '[G]it', mode = { 'n', 'v' } },
       { '<leader>a', group = '[A]I' },
+      { '<leader>b', group = '[B]uffer' },
       { '<leader>n', group = '[N]oice' },
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
     },
@@ -823,7 +824,7 @@ do
       },
       -- By default, you may press `<c-space>` to show the documentation.
       -- Optionally, set `auto_show = true` to show the documentation after a delay.
-      documentation = { auto_show = false, auto_show_delay_ms = 500 },
+      documentation = { auto_show = true, auto_show_delay_ms = 500 },
       menu = {
         cmdline_position = function()
           if vim.g.ui_cmdline_pos ~= nil then
